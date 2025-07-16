@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Pedidos</title>
+  
+
+<script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+    }
+    header {
+      background: #2d89ef;
+      color: white;
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    .menu-btn {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .container {
+      padding: 15px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 250px;
+      height: 100%;
+      background: #333;
+      color: white;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
+      justify-content: space-between;
+      box-sizing: border-box;
+    }
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    .sidebar a {
+      color: white;
+      text-decoration: none;
+      margin: 10px 0;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .sidebar-content {
+        display: flex;
+        flex-direction: column;
+    }
+    .sidebar-bottom {
+        padding-top: 20px;
+        border-top: 1px solid #555;
+    }
+    .sidebar-bottom button {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .sidebar-bottom button:hover {
+        background: #c82333;
+    }
+    /* Estilos para o botão de Logout */
+    .sidebar-bottom .logout-btn {
+        background: #555; /* Cor mais neutra para logout */
+        margin-bottom: 10px; /* Espaço entre logout e reset */
+    }
+    .sidebar-bottom .logout-btn:hover {
+        background: #777;
+    }
+
+    input, button, select {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border-radius: 5px;
+    }
+    textarea {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        box-sizing: border-box;
+        border-radius: 5px;
+        min-height: 150px; /* Altura padrão para o textarea */
+    }
+    .category-btn {
+      display: inline-flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      padding: 8px;
+      margin: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s ease-in-out;
+    }
+    .add-category-btn {
+      background: #2d89ef;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-block;
+      transition: background 0.2s ease-in-out;
+    }
+    .add-category-btn:hover {
+      background: #256bb8;
+    }
+    .category-btn.active {
+      border: 2px solid #2d89ef;
+      box-shadow: 0 0 8px rgba(45, 137, 239, 0.5);
+    }
+    .products {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-start;
+    }
+    .product {
+      background: white;
+      padding: 5px;
+      width: calc(33.33% - 10px);
+      max-width: 120px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 80px;
+      position: relative;
+      transition: all 0.2s ease-in-out;
+    }
+    .product.active {
+      border: 2px solid #2d89ef;
+      box-shadow: 0 0 8px rgba(45, 137, 239, 0.5);
+    }
+    .product strong {
+      font-size: 13px;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .product span {
+      font-size: 11px;
+      display: block;
+      margin-top: 2px;
+    }
+    .product > div:nth-child(2) {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    .product .quantity-control {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 5px;
+    }
+    .product .quantity-control button {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      margin: 0 3px;
+      border: 1px solid #ccc;
+      background: #f0f0f0;
+      color: #333;
+      font-size: 16px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+    }
+    .product .quantity-control span {
+      font-size: 14px;
+      font-weight: bold;
+      min-width: 20px;
+      text-align: center;
+      margin: 0;
+      display: inline-block;
+    }
+    .total {
+      font-weight: bold;
+      font-size: 18px;
+      margin-top: 10px;
+      color: #2d89ef;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap; /* Permite quebrar linha para botões adicionais */
+    }
+    .buttons button {
+      flex: 1;
+      background: #2d89ef;
+      color: white;
+      border: none;
+      min-width: 150px; /* Garante que os botões não fiquem muito pequenos */
+    }
+    .category-btn .action-buttons,
+    .product .action-buttons {
+      display: inline-flex;
+      gap: 3px;
+      margin-left: 5px;
+    }
+    .edit-btn, .delete-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 12px;
+      vertical-align: middle;
+      padding: 0 2px;
+      line-height: 1;
+    }
+    .delete-btn {
+        color: #dc3545;
+    }
+    .product > div:first-child {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        position: absolute;
+        top: 5px;
+        left: 0;
+        padding: 0 5px;
+        box-sizing: border-box;
+    }
+    .product > div:nth-child(2) {
+        margin-top: 15px;
+    }
+
+    /* Estilos para a tela de login */
+    #login-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh; /* Ocupa a maior parte da tela */
+        text-align: center;
+    }
+    #login-container h3 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    #login-container input {
+        width: 80%;
+        max-width: 300px;
+    }
+    #login-container button {
+        width: 80%;
+        max-width: 300px;
+        background: #2d89ef;
+        color: white;
+        border: none;
+        margin-top: 10px;
+    }
+    #login-container button:hover {
+        background: #256bb8;
+    }
+    #login-message {
+        color: red;
+        margin-top: 10px;
+    }
+
+    /* Estilos para a nova tela de mensagem automática */
+    #configurar-mensagem-automatica label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    #configurar-mensagem-automatica .info {
+        background: #e0f2f7;
+        border-left: 5px solid #2d89ef;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+    }
+    #configurar-mensagem-automatica .info code {
+        background: #f0f0f0;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-family: monospace;
+    }
+
+    /* Estilos para o Modal de E-mail */
+    .email-modal {
+      display: none; /* Hidden by default */
+      position: fixed; /* Stay in place */
+      z-index: 101; /* Sit on top */
+      left: 0;
+      top: 0;
+      width: 100%; /* Full width */
+      height: 100%; /* Full height */
+      overflow: auto; /* Enable scroll if needed */
+      background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+      justify-content: center;
+      align-items: center;
+    }
+
+    .email-modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 90%;
+      max-width: 400px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      position: relative;
+    }
+
+    .email-modal-content .close-button {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .email-modal-content .close-button:hover,
+    .email-modal-content .close-button:focus {
+      color: black;
+      text-decoration: none;
+    }
+
+    .email-modal-content h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    .email-modal-content input[type="email"] {
+      width: calc(100% - 20px);
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .email-modal-content button {
+      background-color: #2d89ef;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      width: auto;
+    }
+
+    .email-modal-content button:hover {
+      background-color: #256bb8;
+    }
+
+    .recent-emails-list {
+      margin-top: 15px;
+      max-height: 150px;
+      overflow-y: auto;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+
+    .recent-emails-list div {
+      padding: 8px 0;
+      cursor: pointer;
+      border-bottom: 1px dashed #eee;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .recent-emails-list div:last-child {
+      border-bottom: none;
+    }
+
+    .recent-emails-list div:hover {
+      background-color: #f0f0f0;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-content">
+    <a onclick="toggleSidebar()">❌ Fechar</a>
+    <a onclick="mostrarTela('cadastrar-cliente')">👤 Cadastrar Cliente</a>
+    <a onclick="mostrarTela('main-container')">📦 Novo Pedido</a>
+    <a onclick="mostrarTela('novo-produto')">🆕 Novo Produto</a>
+    <a onclick="mostrarTela('historico')">🕓 Histórico</a>
+    <a onclick="mostrarTela('backupContatos')">📦 Backup de Contatos</a>
+    <a onclick="mostrarTela('configurar-mensagem-automatica')">💬 Mensagem Auto.</a>
+</div>
+  <div class="sidebar-bottom">
+    <a onclick="mostrarTela('configuracoes')">⚙️ Configurações</a> 
+    <button class="logout-btn" onclick="logout()">🚪 Sair</button>
+    <button onclick="resetarDados()">💥 Resetar Dados</button>
+  </div>
+</div>
+<header id="app-header" style="display:none;">
+  <span class="menu-btn" onclick="toggleSidebar()">☰</span>
+  <h3>Sistema de Pedidos</h3>
+</header>
+
+<div class="container" id="login-container">
+    <h3>Bem-vindo!</h3>
+    <input type="text" id="username" placeholder="Nome de Usuário">
+    <input type="password" id="password" placeholder="Senha">
+    <button onclick="login()">Entrar / Cadastrar</button>
+    <p id="login-message" style="display:none;"></p>
+</div>
+
+<div id="app-content" style="display:none;">
+    <div class="container" id="main-container">
+      <h3>Novo Pedido</h3>
+      
+
+<input list="clientes-list" id="cliente" placeholder="Nome ou Telefone do Cliente (Ex: Maria / 11999999999)" oninput="filtrarClientesPorInput()" />
+      <datalist id="clientes-list"></datalist>
+      
+      <div>
+        <h4>Categorias:</h4>
+        <div id="categorias">
+          </div>
+      </div>
+      <div class="products" id="produtos-area"></div>
+      <div class="total" id="total-area">Total: R$ 0,00</div>
+      <div class="buttons">
+        <button onclick="salvarPedido(true)">Salvar Pedido</button>
+        <button onclick="salvarPedido(false)">WhatsApp</button>
+        <button id="btnAdicionarComposto" onclick="adicionarPedidoComposto()">➕ Pedido Composto</button>
+      </div>
+      <div id="pedidoCompostoInfo" style="margin-top: 15px; background-color: #fffbe6; border: 1px solid #ffe680; padding: 10px; border-radius: 5px; display: none;">
+        <p>Pedido composto ativo. Primeiro pedido para: <strong id="nomePrimeiroPedido"></strong> (Total: R$<span id="totalPrimeiroPedido"></span>).</p>
+        <p>Agora monte o segundo pedido para o familiar. Ao finalizar, clique em "Salvar Pedido" ou "WhatsApp".</p>
+        <button style="background-color: #f0ad4e; margin-top: 5px;" onclick="cancelarPedidoComposto()">Cancelar Pedido Composto</button>
+      </div>
+    </div>
+
+    <div class="container" id="cadastrar-cliente" style="display:none">
+      <h3>Cadastro de Cliente</h3>
+      <input type="text" id="nomeCliente" placeholder="Nome do Cliente" oninput="autocompletarCliente('nome')">
+      <input type="text" id="numeroCliente" placeholder="Número do WhatsApp" oninput="autocompletarCliente('numero')">
+      
+
+<button onclick="salvarCliente()">Salvar Cliente</button>
+      <div id="mensagemSalvo" style="display:none;color:green;margin-top:10px;">Cliente salvo com sucesso!</div>
+    </div>
+
+    <div class="container" id="novo-produto" style="display:none">
+      <h3>Novo Produto</h3>
+      <input type="text" id="nomeProduto" placeholder="Nome do Produto">
+      <input type="number" id="precoProduto" placeholder="Preço do Produto">
+      <select id="categoriaProduto"></select>
+      <button onclick="adicionarProduto()">Salvar Produto</button>
+
+      <hr style="margin: 20px 0;"> 
+
+<h3>Importar Produtos de Planilha</h3>
+      <p>A planilha deve ter as colunas:</p>
+      <ul>
+        <li>**Coluna A:** Categoria</li>
+        <li>**Coluna B:** Nome do Produto</li>
+        <li>**Coluna C:** Preço (apenas números)</li>
+      </ul>
+      <input type="file" id="importProductsFile" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onchange="importarProdutosPlanilha(event)">
+      <p id="importProductsMessage" style="color: green; margin-top: 10px;"></p>
+    </div>
+
+    <div class="container" id="historico" style="display:none">
+      <h3>Histórico de Pedidos</h3>
+      <input type="text" placeholder="Buscar por nome ou telefone" oninput="filtrarHistorico(this.value)">
+      <div id="historico-lista"></div>
+    </div>
+
+    <div class="container" id="backupContatos" style="display: none;">
+      <h3>Backup de Contatos (.vcf)</h3>
+      <p>Selecione um arquivo <strong>.vcf</strong> exportado do seu celular:</p>
+      <input type="file" accept=".vcf" onchange="processarVCF(this)">
+      <div id="resultadoVCF" style="margin-top: 10px; color: green;"></div>
+    </div>
+
+    
+<div class="container" id="configurar-mensagem-automatica" style="display:none;">
+        <h3>Configurar Mensagem Automática</h3>
+        <div class="info">
+            <p>Use as variáveis abaixo para personalizar a mensagem:</p>
+            <ul>
+                <li><code>{{NOME_CLIENTE}}</code>: Nome do cliente principal (ex: filha)</li>
+                <li><code>{{ITENS_PEDIDO}}</code>: Lista dos itens e valores do pedido principal</li>
+                <li><code>{{TOTAL_PEDIDO}}</code>: Valor total do pedido principal</li>
+            </ul>
+            <p>Para mensagens de pedido composto, use:</p>
+            <ul>
+                <li><code>{{NOME_CLIENTE_2}}</code>: Nome do segundo cliente (ex: mãe)</li>
+                <li><code>{{ITENS_PEDIDO_2}}</code>: Lista dos itens e valores do segundo pedido</li>
+                <li><code>{{TOTAL_PEDIDO_2}}</code>: Valor total do segundo pedido</li>
+                <li><code>{{MENSAGEM_COMPOSTA}}</code>: Placeholder para a mensagem completa do pedido composto (gerada automaticamente com base nos dois pedidos)</li>
+            </ul>
+        </div>
+        <label for="templateMensagem">Modelo da Mensagem Única:</label>
+        <textarea id="templateMensagem" placeholder="Ex: Olá {{NOME_CLIENTE}}! Seu pedido foi: {{ITENS_PEDIDO}}. Total: R${{TOTAL_PEDIDO}}."></textarea>
+        
+        <label for="templateMensagemComposta" style="margin-top: 20px;">Modelo da Mensagem Composta:</label>
+        <textarea id="templateMensagemComposta" placeholder="Ex: Oi {{NOME_CLIENTE}} hoje você comprou:\n{{ITENS_PEDIDO}}\nTotal: R$ {{TOTAL_PEDIDO}}.\n\nE sua mãe, {{NOME_CLIENTE_2}}, comprou:\n{{ITENS_PEDIDO_2}}\nTotal: R$ {{TOTAL_PEDIDO_2}}."></textarea>
+
+        <button onclick="salvarTemplateMensagem()">Salvar Modelos de Mensagem</button>
+        <p id="mensagemTemplateSalvo" style="color: green; margin-top: 10px; display:none;"></p>
+    </div>
+
+    
+<div class="container" id="configuracoes" style="display:none;">
+      <h3>Configurações de E-mail</h3>
+      <p>Configure o envio automático do histórico de pedidos para o seu e-mail.</p>
+      
+      <label for="emailAutomaticoInput">E-mail para Envio Automático:</label>
+      <input type="email" id="emailAutomaticoInput" placeholder="seuemail@exemplo.com">
+      <button onclick="salvarEmailAutomatico()">Salvar E-mail</button>
+      <p id="emailAutomaticoMessage" style="color: green; margin-top: 10px; display: none;"></p>
+
+      <hr style="margin: 20px 0;">
+
+      <h4>Frequência de Envio Automático:</h4>
+      <select id="frequenciaEnvio">
+        <option value="manual">Manual (somente via botão)</option>
+        <option value="daily">Diariamente</option>
+        <option value="weekly">Semanalmente</option>
+        <option value="monthly">Mensalmente</option>
+        <option value="yearly">Anualmente</option>
+      </select>
+      <button onclick="salvarFrequenciaEnvio()">Salvar Frequência</button>
+      <p id="frequenciaEnvioMessage" style="color: green; margin-top: 10px; display: none;"></p>
+
+      <hr style="margin: 20px 0;">
+      <button style="background-color: #28a745; margin-top: 10px;" onclick="enviarHistoricoEmailManual()">📧 Enviar Histórico Agora</button>
+    </div>
+</div>
+
+<script>
+  // Variáveis globais do aplicativo
+  let produtos = {}; // Inicializado vazio, será carregado por usuário
+  let clientes = []; // Inicializado vazio, será carregado por usuário
+  let historico = []; // Inicializado vazio, será carregado por usuário
+  let total = 0;
+  let categoriaAtiva = '';
+  let currentUser = null; // Variável para armazenar o usuário logado
+
+  // Variável para armazenar o template da mensagem do WhatsApp
+  let whatsappMessageTemplate = "Olá {{NOME_CLIENTE}}! Seu pedido foi:\n{{ITENS_PEDIDO}}.\nTotal: R$ {{TOTAL_PEDIDO}}.\nQuando puder me dá um retorno! Obrigado 🙌";
+  // NOVO: Variável para armazenar o template da mensagem composta
+  let whatsappCompositeMessageTemplate = "Oi {{NOME_CLIENTE}} hoje você comprou:\n{{ITENS_PEDIDO}}\nTotal: R$ {{TOTAL_PEDIDO}}.\n\nE sua mãe, {{NOME_CLIENTE_2}}, comprou:\n{{ITENS_PEDIDO_2}}\nTotal: R$ {{TOTAL_PEDIDO_2}}.";
+
+  // NOVO: Variável para armazenar o primeiro pedido para o pedido composto
+  let primeiroPedidoComposto = null; 
+
+  // NOVO: Variáveis para o e-mail automático
+  let emailAutomaticoConfig = {
+      email: '',
+      frequencia: 'manual', // 'manual', 'daily', 'weekly', 'monthly', 'yearly'
+      lastSent: null // Data do último envio (timestamp)
+  };
+
+  // --- Funções de Autenticação e Login ---
+
+  // Objeto para armazenar as credenciais de usuários
+  // Estrutura: { username1: 'senha1', username2: 'senha2' }
+  let userCredentials = {}; 
+
+  function loadUserCredentials() {
+      const storedCredentials = localStorage.getItem('userCredentials');
+      if (storedCredentials) {
+          userCredentials = JSON.parse(storedCredentials);
+      }
+  }
+
+  function saveUserCredentials() {
+      localStorage.setItem('userCredentials', JSON.stringify(userCredentials));
+  }
+
+  function login() {
+      const usernameInput = document.getElementById('username').value.trim();
+      const passwordInput = document.getElementById('password').value.trim();
+      const loginMessage = document.getElementById('login-message');
+
+      if (!usernameInput || !passwordInput) {
+          loginMessage.innerText = "Por favor, preencha usuário e senha.";
+          loginMessage.style.display = 'block';
+          return;
+      }
+
+      if (userCredentials[usernameInput]) {
+          // Usuário existe, verifica a senha
+          if (userCredentials[usernameInput] === passwordInput) {
+              currentUser = usernameInput;
+              loginMessage.style.display = 'none';
+              enterApp(); // Entra no aplicativo
+          } else {
+              loginMessage.innerText = "Senha incorreta.";
+              loginMessage.style.display = 'block';
+          }
+      } else {
+          // Usuário não existe, cadastra novo
+          if (confirm(`Usuário "${usernameInput}" não encontrado. Deseja cadastrá-lo com esta senha?`)) {
+              userCredentials[usernameInput] = passwordInput;
+              saveUserCredentials();
+              currentUser = usernameInput;
+              loginMessage.style.display = 'none';
+              alert(`Usuário "${usernameInput}" cadastrado com sucesso!`);
+              enterApp(); // Entra no aplicativo
+          } else {
+              loginMessage.style.display = 'none'; // Limpa a mensagem se cancelar
+          }
+      }
+  }
+
+  function logout() {
+      if (confirm("Tem certeza que deseja sair?")) {
+          currentUser = null; // Limpa o usuário logado
+          // Limpa os campos de login para a próxima vez
+          document.getElementById('username').value = '';
+          document.getElementById('password').value = '';
+
+          // Esconde o conteúdo do aplicativo e mostra a tela de login
+          document.getElementById('app-content').style.display = 'none';
+          document.getElementById('app-header').style.display = 'none';
+          document.getElementById('login-container').style.display = 'flex';
+          document.getElementById('sidebar').classList.remove('active'); // Garante que a sidebar esteja fechada
+          
+          // Zera as variáveis globais do app (importante para não misturar dados)
+          produtos = {}; 
+          clientes = [];
+          historico = [];
+          total = 0;
+          categoriaAtiva = '';
+          whatsappMessageTemplate = "Olá {{NOME_CLIENTE}}! Seu pedido foi:\n{{ITENS_PEDIDO}}.\nTotal: R$ {{TOTAL_PEDIDO}}.\nQuando puder me dá um retorno! Obrigado 🙌";
+          whatsappCompositeMessageTemplate = "Oi {{NOME_CLIENTE}} hoje você comprou:\n{{ITENS_PEDIDO}}\nTotal: R$ {{TOTAL_PEDIDO}}.\n\nE sua mãe, {{NOME_CLIENTE_2}}, comprou:\n{{ITENS_PEDIDO_2}}\nTotal: R$ {{TOTAL_PEDIDO_2}}.";
+          primeiroPedidoComposto = null; // Zera o pedido composto também
+          emailAutomaticoConfig = { email: '', frequencia: 'manual', lastSent: null }; // Zera configurações de e-mail
+
+          alert("Você saiu do sistema.");
+      }
+  }
+
+  function enterApp() {
+      // Esconde a tela de login e mostra o conteúdo do aplicativo
+      document.getElementById('login-container').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+      document.getElementById('app-header').style.display = 'flex'; // Mostra o cabeçalho
+
+      // Carrega os dados específicos do usuário logado
+      carregarDadosDoLocalStorage(); 
+      carregarTemplateMensagem(); // Carrega os templates da mensagem
+      carregarCategorias(); 
+      atualizarTotal();
+      filtrarClientesPorInput();
+      atualizarEstadoPedidoCompostoUI();
+      // NOVO: Verifica e envia e-mail automático na inicialização
+      verificarEEnviarEmailAutomtico();
+  }
+
+  // --- Funções Auxiliares com Chaves de Usuário ---
+
+  // Função auxiliar para gerar a chave do localStorage com base no usuário atual
+  function getUserLocalStorageKey(baseKey) {
+      if (!currentUser) {
+          console.error("Nenhum usuário logado. Não é possível acessar dados.");
+          return null;
+      }
+      return `${baseKey}_${currentUser}`;
+  }
+
+  function salvarDadosNoLocalStorage() {
+      if (!currentUser) return; // Não salva se não houver usuário logado
+      localStorage.setItem(getUserLocalStorageKey('clientes'), JSON.stringify(clientes));
+      localStorage.setItem(getUserLocalStorageKey('historico'), JSON.stringify(historico));
+      localStorage.setItem(getUserLocalStorageKey('produtos'), JSON.stringify(produtos));
+      localStorage.setItem(getUserLocalStorageKey('whatsappMessageTemplate'), whatsappMessageTemplate);
+      localStorage.setItem(getUserLocalStorageKey('whatsappCompositeMessageTemplate'), whatsappCompositeMessageTemplate);
+      localStorage.setItem(getUserLocalStorageKey('emailAutomaticoConfig'), JSON.stringify(emailAutomaticoConfig)); // NOVO: Salva as configurações de e-mail automático
+  }
+
+  function carregarDadosDoLocalStorage() {
+      if (!currentUser) return; // Não carrega se não houver usuário logado
+
+      const clientesSalvos = localStorage.getItem(getUserLocalStorageKey('clientes'));
+      const historicoSalvos = localStorage.getItem(getUserLocalStorageKey('historico'));
+      const produtosSalvos = localStorage.getItem(getUserLocalStorageKey('produtos'));
+      const emailAutomaticoSalvo = localStorage.getItem(getUserLocalStorageKey('emailAutomaticoConfig')); // NOVO
+
+      clientes = clientesSalvos ? JSON.parse(clientesSalvos) : [];
+      historico = historicoSalvos ? JSON.parse(historicoSalvos) : [];
+      historico.forEach(ped => ped.data = new Date(ped.data));
+      
+      // Carrega produtos ou inicializa com categorias padrão se não houverem para o usuário
+      produtos = produtosSalvos ? JSON.parse(produtosSalvos) : {
+          Verdura: [],
+          Queijo: [],
+          Doce: []
+      };
+      // Garante que o objeto `produtos` sempre tenha a estrutura esperada (mesmo que vazias)
+      if (Object.keys(produtos).length === 0) {
+          produtos = {
+              Verdura: [],
+              Queijo: [],
+              Doce: []
+          };
+      }
+      // NOVO: Carrega configurações de e-mail automático
+      if (emailAutomaticoSalvo) {
+          emailAutomaticoConfig = JSON.parse(emailAutomaticoSalvo);
+          // Converte lastSent de volta para Date se existir
+          if (emailAutomaticoConfig.lastSent) {
+              emailAutomaticoConfig.lastSent = new Date(emailAutomaticoConfig.lastSent);
+          }
+      }
+  }
+
+  function carregarTemplateMensagem() {
+      if (!currentUser) return;
+      
+      const savedTemplate = localStorage.getItem(getUserLocalStorageKey('whatsappMessageTemplate'));
+      if (savedTemplate) {
+          whatsappMessageTemplate = savedTemplate;
+      } else {
+          whatsappMessageTemplate = "Olá {{NOME_CLIENTE}}! Seu pedido foi:\n{{ITENS_PEDIDO}}.\nTotal: R$ {{TOTAL_PEDIDO}}.\nQuando puder me dá um retorno! Obrigado 🙌";
+      }
+
+      const savedCompositeTemplate = localStorage.getItem(getUserLocalStorageKey('whatsappCompositeMessageTemplate'));
+      if (savedCompositeTemplate) {
+          whatsappCompositeMessageTemplate = savedCompositeTemplate;
+      } else {
+          whatsappCompositeMessageTemplate = "Oi {{NOME_CLIENTE}} hoje você comprou:\n{{ITENS_PEDIDO}}\nTotal: R$ {{TOTAL_PEDIDO}}.\n\nE sua mãe, {{NOME_CLIENTE_2}}, comprou:\n{{ITENS_PEDIDO_2}}\nTotal: R$ {{TOTAL_PEDIDO_2}}.";
+      }
+
+      // Se a tela de configuração de mensagem estiver visível, atualiza os textareas
+      if (document.getElementById('configurar-mensagem-automatica').style.display === 'block') {
+          document.getElementById('templateMensagem').value = whatsappMessageTemplate;
+          document.getElementById('templateMensagemComposta').value = whatsappCompositeMessageTemplate;
+      }
+  }
+
+  function salvarTemplateMensagem() {
+      const newTemplate = document.getElementById('templateMensagem').value;
+      const newCompositeTemplate = document.getElementById('templateMensagemComposta').value; 
+      
+      whatsappMessageTemplate = newTemplate;
+      whatsappCompositeMessageTemplate = newCompositeTemplate; 
+
+      salvarDadosNoLocalStorage(); 
+      const messageElement = document.getElementById('mensagemTemplateSalvo');
+      messageElement.innerText = "Modelos de mensagem salvos com sucesso!";
+      messageElement.style.display = 'block';
+      setTimeout(() => {
+          messageElement.style.display = 'none';
+      }, 3000);
+  }
+
+  function resetarDados() {
+    if (!currentUser) {
+        alert("Nenhum usuário logado para resetar dados.");
+        return;
+    }
+
+    const confirmacao = prompt(`ATENÇÃO: Você está prestes a apagar TODOS os seus dados salvos (${currentUser}) no sistema (clientes, produtos, categorias, histórico). Esta ação é irreversível.\n\nPara confirmar, digite a palavra 'confirmar' abaixo:`);
+
+    if (confirmacao === 'confirmar') {
+      // Limpa os dados APENAS para o usuário logado
+      localStorage.removeItem(getUserLocalStorageKey('clientes'));
+      localStorage.removeItem(getUserLocalStorageKey('historico'));
+      localStorage.removeItem(getUserLocalStorageKey('produtos'));
+      localStorage.removeItem(getUserLocalStorageKey('whatsappMessageTemplate'));
+      localStorage.removeItem(getUserLocalStorageKey('whatsappCompositeMessageTemplate'));
+      localStorage.removeItem(getUserLocalStorageKey('emailAutomaticoConfig')); // NOVO: Remove configurações de e-mail
+
+      // Zera as variáveis globais
+      clientes = [];
+      historico = [];
+      produtos = {
+        Verdura: [],
+        Queijo: [],
+        Doce: []
+      };
+      total = 0;
+      categoriaAtiva = '';
+      whatsappMessageTemplate = "Olá {{NOME_CLIENTE}}! Seu pedido foi:\n{{ITENS_PEDIDO}}.\nTotal: R$ {{TOTAL_PEDIDO}}.\nQuando puder me dá um retorno! Obrigado 🙌";
+      whatsappCompositeMessageTemplate = "Oi {{NOME_CLIENTE}} hoje você comprou:\n{{ITENS_PEDIDO}}\nTotal: R$ {{TOTAL_PEDIDO}}.\n\nE sua mãe, {{NOME_CLIENTE_2}}, comprou:\n{{ITENS_PEDIDO_2}}\nTotal: R$ {{TOTAL_PEDIDO_2}}.";
+      primeiroPedidoComposto = null; 
+      emailAutomaticoConfig = { email: '', frequencia: 'manual', lastSent: null }; // NOVO: Reseta configurações de e-mail
+
+      // Recarrega o estado inicial (já zerei as variáveis, então as funções de carregar pegarão os valores iniciais)
+      carregarDadosDoLocalStorage(); 
+      carregarTemplateMensagem(); 
+      carregarCategorias();
+      atualizarTotal();
+      filtrarClientesPorInput();
+      
+      mostrarTela('main-container'); 
+      toggleSidebar(); 
+      alert(`Todos os dados de ${currentUser} foram resetados com sucesso.`);
+    } else if (confirmacao !== null) {
+      alert("Confirmação incorreta. Os dados NÃO foram resetados.");
+    }
+  }
+
+  // --- Funções Existentes (algumas com pequenas mudanças para usar o template de mensagem) ---
+
+  function toggleSidebar() {
+    const side = document.getElementById("sidebar");
+    side.classList.toggle("active");
+  }
+
+  function mostrarTela(id) {
+    if (!currentUser && id !== 'login-container') { 
+        alert("Por favor, faça login para acessar o sistema.");
+        return;
+    }
+    toggleSidebar();
+    document.querySelectorAll("#app-content .container").forEach(div => div.style.display = "none");
+    document.getElementById(id).style.display = "block";
+    if (id === 'novo-produto') preencherSelectCategoria();
+    if (id === 'historico') mostrarHistorico();
+    if (id === 'backupContatos') document.getElementById('resultadoVCF').innerText = ''; 
+    if (id === 'configurar-mensagem-automatica') carregarTemplateMensagem();
+    if (id === 'configuracoes') carregarConfiguracoesEmail();
+
+    if (id === 'cadastrar-cliente' || id === 'main-container') {
+        // Removido chamadas para atualizarListaLocais e atualizarListaLocaisBusca
+    }
+    if (id === 'cadastrar-cliente') {
+        document.getElementById("nomeCliente").value = "";
+        document.getElementById("numeroCliente").value = "";
+        // Removido document.getElementById("localCliente").value = "";
+        // Removido atualizarListaClientesCadastro();
+        // Removido atualizarListaClientesCadastroNumero();
+    }
+    if (id === 'main-container') { 
+        atualizarEstadoPedidoCompostoUI();
+    }
+  }
+
+  function adicionarNovaCategoria() {
+    const novoNomeCat = prompt("Digite o nome da nova categoria:");
+    if (novoNomeCat && novoNomeCat.trim() !== '') {
+      const nomeNormalizado = novoNomeCat.trim();
+      if (produtos[nomeNormalizado]) {
+        alert("Já existe uma categoria com este nome.");
+        return;
+      }
+      produtos[nomeNormalizado] = [];
+      carregarCategorias();
+      salvarDadosNoLocalStorage();
+      alert(`Categoria "${nomeNormalizado}" criada com sucesso!`);
+    } else if (novoNomeCat !== null) {
+      alert("O nome da categoria não pode ser vazio.");
+    }
+  }
+
+  function editarOuExcluirCategoria(cat, acao) {
+    if (acao === 'editar') {
+      const novoNome = prompt("Novo nome da categoria:", cat);
+      if (novoNome && novoNome.trim() !== '' && novoNome !== cat) {
+        if (produtos[novoNome]) {
+            alert("Já existe uma categoria com este nome.");
+            return;
+        }
+        produtos[novoNome] = produtos[cat];
+        delete produtos[cat];
+        if (categoriaAtiva === cat) {
+            categoriaAtiva = novoNome;
+        }
+        carregarCategorias();
+        if (categoriaAtiva === novoNome) {
+             carregarCategoria(novoNome);
+        }
+        salvarDadosNoLocalStorage();
+      } else if (novoNome !== null && novoNome.trim() === '') {
+        alert("O nome da categoria não pode ser vazio.");
+      }
+    } else if (acao === 'excluir') {
+      if (confirm(`Tem certeza que deseja excluir a categoria "${cat}" e todos os seus produtos?`)) {
+        delete produtos[cat];
+        if (categoriaAtiva === cat) {
+            categoriaAtiva = '';
+            document.getElementById("produtos-area").innerHTML = "<p>Nenhuma categoria de produto. Comece adicionando uma!</p>";
+        }
+        carregarCategorias();
+        atualizarTotal();
+        salvarDadosNoLocalStorage();
+        alert(`Categoria "${cat}" excluída com sucesso.`);
+      }
+    }
+  }
+
+  function carregarCategorias() {
+    const area = document.getElementById("categorias");
+    area.innerHTML = ""; // Limpa categorias existentes
+    
+    // Adiciona o botão "Adicionar Categoria"
+    const addCatBtn = document.createElement("button");
+    addCatBtn.className = "add-category-btn";
+    addCatBtn.innerText = "➕ Nova Categoria";
+    addCatBtn.onclick = adicionarNovaCategoria;
+    area.appendChild(addCatBtn);
+
+    Object.keys(produtos).forEach(cat => {
+      const btn = document.createElement("button");
+      btn.className = "category-btn";
+      btn.innerHTML = `
+        <span>${cat}</span>
+        <div class="action-buttons">
+          <button class="edit-btn" onclick="editarOuExcluirCategoria('${cat}', 'editar')">✎</button>
+          <button class="delete-btn" onclick="editarOuExcluirCategoria('${cat}', 'excluir')">✖</button>
+        </div>
+      `;
+      btn.onclick = () => carregarCategoria(cat);
+      area.appendChild(btn);
+    });
+
+    if (categoriaAtiva && produtos[categoriaAtiva]) { // Reativa a categoria se ela ainda existir
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            const span = btn.querySelector('span:first-child');
+            if (span && span.textContent.trim() === categoriaAtiva) {
+                btn.classList.add('active');
+            }
+        });
+        carregarCategoria(categoriaAtiva);
+    } else if (Object.keys(produtos).length > 0) { // Se não houver categoria ativa, ou a ativa foi excluída, ativa a primeira
+        categoriaAtiva = Object.keys(produtos)[0];
+        carregarCategoria(categoriaAtiva);
+    } else { // Se não houver nenhuma categoria
+        document.getElementById("produtos-area").innerHTML = "<p>Nenhuma categoria de produto. Comece adicionando uma!</p>";
+        categoriaAtiva = '';
+    }
+  }
+
+  function carregarCategoria(cat) {
+    document.querySelectorAll('.category-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+
+    const categoriaBotoes = document.querySelectorAll('.category-btn');
+    categoriaBotoes.forEach(btn => {
+        const nomeCategoriaSpan = btn.querySelector('span:first-child');
+        if (nomeCategoriaSpan && nomeCategoriaSpan.textContent.trim() === cat) {
+            btn.classList.add('active');
+            categoriaAtiva = cat;
+        }
+    });
+
+    const area = document.getElementById("produtos-area");
+    area.innerHTML = "";
+    if (produtos[cat] && produtos[cat].length > 0) {
+      produtos[cat].forEach((p, i) => {
+        const div = document.createElement("div");
+        div.className = "product";
+        if (p.quantidade > 0) {
+            div.classList.add('active');
+        }
+        div.innerHTML = `
+          <div>
+            <button class="edit-btn" onclick="editarOuExcluirProduto('${cat}', ${i}, 'editar')">✎</button>
+            <button class="delete-btn" onclick="editarOuExcluirProduto('${cat}', ${i}, 'excluir')">✖</button>
+          </div>
+          <div><strong>${p.nome}</strong><br>R$${p.preco.toFixed(2)}</div>
+          <div class="quantity-control">
+            <button onclick="alterarQtd('${cat}', ${i}, -1)">-</button>
+            <span id="${cat}-${i}">${p.quantidade}</span>
+            <button onclick="alterarQtd('${cat}', ${i}, 1)">+</button>
+          </div>`;
+        area.appendChild(div);
+      });
+    } else {
+        area.innerHTML = "<p>Nenhum produto nesta categoria ainda.</p>";
+    }
+  }
+
+  function alterarQtd(cat, index, delta) {
+    const produto = produtos[cat][index];
+    produto.quantidade += delta;
+    if (produto.quantidade < 0) produto.quantidade = 0;
+    
+    document.getElementById(`${cat}-${index}`).innerText = produto.quantidade;
+    
+    const productElement = document.getElementById(`${cat}-${index}`).closest('.product');
+    if (productElement) {
+        if (produto.quantidade > 0) {
+            productElement.classList.add('active');
+        } else {
+            productElement.classList.remove('active');
+        }
+    }
+    
+    atualizarTotal();
+    salvarDadosNoLocalStorage();
+  }
+
+  function atualizarTotal() {
+    total = 0;
+    Object.values(produtos).forEach(lista => {
+      lista.forEach(p => total += p.preco * p.quantidade);
+    });
+    document.getElementById("total-area").innerText = `Total: R$ ${total.toFixed(2)}`;
+  }
+
+  function getItensDoPedidoAtual() {
+    const itens = [];
+    Object.entries(produtos).forEach(([cat, lista]) => {
+      lista.forEach(p => {
+        if (p.quantidade > 0) {
+          itens.push(`${p.quantidade}x ${p.nome} (R$${(p.preco * p.quantidade).toFixed(2).replace('.', ',')})`);
+        }
+      });
+    });
+    return itens;
+  }
+
+  function salvarPedido(voltar) {
+    const clienteInput = document.getElementById("cliente").value;
+    
+    // Tenta encontrar o cliente pelo número exato ou pelo nome
+    let encontrado = clientes.find(c => c.numero === clienteInput.split(' - ')[1]); // Procura pelo número se o formato "Nome - Telefone" for usado
+    if (!encontrado) { // Se não encontrou pelo número, tenta pelo nome exato
+        encontrado = clientes.find(c => c.nome.toLowerCase() === clienteInput.toLowerCase());
+    }
+    if (!encontrado) { // Se ainda não encontrou, tenta por um match parcial no nome
+        encontrado = clientes.find(c => clienteInput.toLowerCase().includes(c.nome.toLowerCase()));
+    }
+    if (!encontrado) { // Se ainda não encontrou, tenta por um match parcial no número
+        encontrado = clientes.find(c => c.numero.includes(clienteInput));
+    }
+
+    if (!encontrado) {
+        alert("Cliente não encontrado. Por favor, selecione um cliente da lista ou cadastre um novo.");
+        return;
+    }
+
+    const itensPedidoAtual = getItensDoPedidoAtual();
+    if (itensPedidoAtual.length === 0 && !primeiroPedidoComposto) { 
+        alert("Adicione itens ao pedido antes de salvar ou enviar.");
+        return;
+    }
+
+    let mensagemFinal = "";
+    let numeroParaWhatsapp = encontrado.numero; 
+    let nomeClientePrincipalParaHistorico = encontrado.nome; 
+
+    if (primeiroPedidoComposto) {
+        const nomeSegundoCliente = encontrado.nome; 
+        const totalSegundoPedido = total;
+        
+        let msgComposta = whatsappCompositeMessageTemplate;
+        msgComposta = msgComposta.replace(/{{NOME_CLIENTE}}/g, primeiroPedidoComposto.nomeCliente);
+        msgComposta = msgComposta.replace(/{{ITENS_PEDIDO}}/g, primeiroPedidoComposto.itens.join(', '));
+        msgComposta = msgComposta.replace(/{{TOTAL_PEDIDO}}/g, primeiroPedidoComposto.total.toFixed(2).replace('.', ','));
+
+        msgComposta = msgComposta.replace(/{{NOME_CLIENTE_2}}/g, nomeSegundoCliente);
+        msgComposta = msgComposta.replace(/{{ITENS_PEDIDO_2}}/g, itensPedidoAtual.join(', '));
+        msgComposta = msgComposta.replace(/{{TOTAL_PEDIDO_2}}/g, totalSegundoPedido.toFixed(2).replace('.', ','));
+        
+        mensagemFinal = msgComposta;
+        numeroParaWhatsapp = primeiroPedidoComposto.numeroCliente; 
+        nomeClientePrincipalParaHistorico = primeiroPedidoComposto.nomeCliente; 
+
+    } else {
+        let msg = whatsappMessageTemplate;
+        msg = msg.replace(/{{NOME_CLIENTE}}/g, encontrado.nome);
+        msg = msg.replace(/{{ITENS_PEDIDO}}/g, itensPedidoAtual.join(', '));
+        msg = msg.replace(/{{TOTAL_PEDIDO}}/g, total.toFixed(2).replace('.', ','));
+        mensagemFinal = msg;
+    }
+
+    historico.unshift({ 
+        nome: nomeClientePrincipalParaHistorico, 
+        numero: numeroParaWhatsapp, 
+        // Removido 'local' do histórico
+        total: primeiroPedidoComposto ? (primeiroPedidoComposto.total + total) : total, 
+        data: new Date(), 
+        mensagem: mensagemFinal 
+    });
+    
+    salvarDadosNoLocalStorage();
+
+    if (!voltar) window.open(`https://wa.me/${numeroParaWhatsapp}?text=${encodeURIComponent(mensagemFinal)}`, '_blank');
+    
+    limparPedido(); 
+    cancelarPedidoComposto(); 
+    mostrarTela('main-container');
+    alert("Pedido salvo com sucesso!");
+  }
+
+  function limparPedido() {
+    Object.values(produtos).forEach(lista => lista.forEach(p => p.quantidade = 0));
+    atualizarTotal();
+    document.getElementById("produtos-area").innerHTML = "";
+    document.getElementById("cliente").value = "";
+    // Removido document.getElementById("buscarLocalCliente").value = "";
+    carregarCategorias(); 
+    categoriaAtiva = ''; 
+    filtrarClientesPorInput();
+    // Removido atualizarListaLocais(); 
+    // Removido atualizarListaLocaisBusca(); 
+  }
+
+  function adicionarPedidoComposto() {
+    const clienteInput = document.getElementById("cliente").value;
+    const encontrado = clientes.find(c => c.nome === clienteInput || c.numero === clienteInput.split(' - ')[1]); // Tenta encontrar pelo nome ou pelo número se for "Nome - Telefone"
+    if (!encontrado) {
+        alert("Por favor, selecione um cliente para o primeiro pedido antes de iniciar um pedido composto.");
+        return;
+    }
+
+    const itensPrimeiroPedido = getItensDoPedidoAtual();
+    if (itensPrimeiroPedido.length === 0) {
+        alert("Adicione itens ao primeiro pedido antes de prosseguir com um pedido composto.");
+        return;
+    }
+
+    primeiroPedidoComposto = {
+        nomeCliente: encontrado.nome,
+        numeroCliente: encontrado.numero,
+        // Removido localCliente do primeiroPedidoComposto
+        itens: itensPrimeiroPedido,
+        total: total
+    };
+
+    limparPedido(); 
+    document.getElementById("cliente").value = ""; 
+    
+    atualizarEstadoPedidoCompostoUI(); 
+    alert(`Primeiro pedido para "${primeiroPedidoComposto.nomeCliente}" (${primeiroPedidoComposto.numeroCliente}) adicionado ao composto. Agora monte o segundo pedido.`);
+  }
+
+  function cancelarPedidoComposto() {
+      primeiroPedidoComposto = null; 
+      atualizarEstadoPedidoCompostoUI(); 
+      limparPedido(); 
+  }
+
+  function atualizarEstadoPedidoCompostoUI() {
+      const infoDiv = document.getElementById('pedidoCompostoInfo');
+      const btnAdicionarComposto = document.getElementById('btnAdicionarComposto');
+
+      if (primeiroPedidoComposto) {
+          infoDiv.style.display = 'block';
+          document.getElementById('nomePrimeiroPedido').innerText = primeiroPedidoComposto.nomeCliente;
+          document.getElementById('totalPrimeiroPedido').innerText = primeiroPedidoComposto.total.toFixed(2).replace('.', ',');
+          btnAdicionarComposto.style.display = 'none'; 
+      } else {
+          infoDiv.style.display = 'none';
+          btnAdicionarComposto.style.display = 'block'; 
+      }
+  }
+
+  function salvarCliente() {
+    let nome = document.getElementById("nomeCliente").value.trim();
+    let numero = document.getElementById("numeroCliente").value.trim();
+    // Removido let local = document.getElementById("localCliente").value.trim();
+
+    if (!nome || !numero) {
+        alert("Preencha nome e número do cliente.");
+        return;
+    }
+
+    const indexClienteExistente = clientes.findIndex(c => c.numero === numero);
+
+    if (indexClienteExistente !== -1) {
+        clientes[indexClienteExistente].nome = nome;
+        // Removido clientes[indexClienteExistente].local = local;
+        alert("Cadastro de cliente atualizado com sucesso!");
+    } else {
+        if (clientes.some(c => c.numero === numero)) {
+            alert("Já existe um cliente com este número de WhatsApp. Por favor, edite o cadastro existente.");
+            return;
+        }
+        clientes.push({ nome, numero }); // Removido local
+        document.getElementById("mensagemSalvo").style.display = "block";
+        setTimeout(() => document.getElementById("mensagemSalvo").style.display = "none", 3000);
+        alert("Novo cliente salvo com sucesso!");
+    }
+    
+    filtrarClientesPorInput(); 
+    // Removido atualizarListaLocais(); 
+    // Removido atualizarListaLocaisBusca(); 
+    // Removido atualizarListaClientesCadastro(); 
+    // Removido atualizarListaClientesCadastroNumero();
+    
+    document.getElementById("nomeCliente").value = "";
+    document.getElementById("numeroCliente").value = "";
+    // Removido document.getElementById("localCliente").value = "";
+    
+    salvarDadosNoLocalStorage();
+  }
+
+  function atualizarListaClientes(filtroNomeTelefone = '') { 
+    const datalist = document.getElementById("clientes-list");
+    datalist.innerHTML = "";
+    
+    const clientesFiltrados = clientes.filter(c => {
+        const nomeOuTelefoneMatch = filtroNomeTelefone === '' || 
+                                    c.nome.toLowerCase().includes(filtroNomeTelefone.toLowerCase()) || 
+                                    c.numero.includes(filtroNomeTelefone);
+        return nomeOuTelefoneMatch; 
+    });
+
+    clientesFiltrados.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.nome; // Define o valor da opção como apenas o nome do cliente
+      opt.textContent = `${c.nome} - ${c.numero}`; // Exibe Nome - Telefone
+      datalist.appendChild(opt);
+    });
+  }
+
+  function filtrarClientesPorInput() {
+      const inputCliente = document.getElementById('cliente').value;
+      atualizarListaClientes(inputCliente); 
+  }
+
+  function autocompletarCliente(campoOrigem) {
+    const nomeInput = document.getElementById("nomeCliente");
+    const numeroInput = document.getElementById("numeroCliente");
+    
+    let valorDigitado = '';
+    let clienteEncontrado = null;
+
+    if (campoOrigem === 'nome') {
+        valorDigitado = nomeInput.value.trim().toLowerCase();
+        clienteEncontrado = clientes.find(c => c.nome.toLowerCase() === valorDigitado);
+        if (!clienteEncontrado) {
+            clienteEncontrado = clientes.find(c => c.numero === valorDigitado);
+        }
+    } else if (campoOrigem === 'numero') {
+        valorDigitado = numeroInput.value.trim();
+        clienteEncontrado = clientes.find(c => c.numero === valorDigitado);
+        if (!clienteEncontrado) {
+            clienteEncontrado = clientes.find(c => c.nome.toLowerCase() === valorDigitado.toLowerCase());
+        }
+    }
+
+    if (clienteEncontrado) {
+        nomeInput.value = clienteEncontrado.nome;
+        numeroInput.value = clienteEncontrado.numero;
+    }
+  }
+
+  function preencherSelectCategoria() {
+    const select = document.getElementById("categoriaProduto");
+    select.innerHTML = "";
+    if (Object.keys(produtos).length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.innerText = "Nenhuma categoria cadastrada";
+        opt.disabled = true;
+        opt.selected = true;
+        select.appendChild(opt);
+        return;
+    }
+    Object.keys(produtos).forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.innerText = cat;
+      select.appendChild(opt);
+    });
+    if (Object.keys(produtos).length > 0) {
+        select.value = Object.keys(produtos)[0];
+    }
+  }
+
+  function adicionarProduto() {
+    const nome = document.getElementById("nomeProduto").value;
+    const preco = parseFloat(document.getElementById("precoProduto").value);
+    const cat = document.getElementById("categoriaProduto").value;
+
+    if (!nome || nome.trim() === '') {
+        alert("Por favor, preencha o nome do produto.");
+        return;
+    }
+    if (isNaN(preco) || preco <= 0) {
+        alert("Por favor, insira um preço válido para o produto.");
+        return;
+    }
+    if (!cat) {
+        alert("Por favor, selecione ou crie uma categoria para o produto.");
+        return;
+    }
+
+    if (!produtos[cat]) { 
+        produtos[cat] = [];
+        carregarCategorias(); 
+    }
+
+    // Verifica se o produto já existe na categoria
+    const produtoExistente = produtos[cat].find(p => p.nome.toLowerCase() === nome.toLowerCase());
+    if (produtoExistente) {
+        if (confirm(`Produto "${nome}" já existe na categoria "${cat}". Deseja atualizar o preço para R$${preco.toFixed(2)}?`)) {
+            produtoExistente.preco = preco;
+            alert("Produto atualizado com sucesso!");
+        } else {
+            return; 
+        }
+    } else {
+        produtos[cat].push({ nome: nome, preco: preco, quantidade: 0 });
+        alert("Produto adicionado com sucesso!"); 
+    }
+    
+    document.getElementById("nomeProduto").value = "";
+    document.getElementById("precoProduto").value = "";
+    
+    if (categoriaAtiva === cat) {
+        carregarCategoria(categoriaAtiva); 
+    } else {
+        carregarCategorias();
+    }
+    
+    salvarDadosNoLocalStorage();
+  }
+
+  function editarOuExcluirProduto(cat, index, acao) {
+    const p = produtos[cat][index];
+    if (acao === 'editar') {
+      const novoNome = prompt("Novo nome do produto:", p.nome);
+      const novoPreco = parseFloat(prompt("Novo preço:", p.preco));
+      
+      let mudou = false;
+      if (novoNome && novoNome.trim() !== '' && novoNome !== p.nome) {
+          if (produtos[cat].some((prod, idx) => idx !== index && prod.nome.toLowerCase() === novoNome.toLowerCase())) {
+              alert("Já existe um produto com este nome nesta categoria.");
+              return;
+          }
+          produtos[cat][index].nome = novoNome;
+          mudou = true;
+      }
+      if (!isNaN(novoPreco) && novoPreco > 0 && novoPreco !== p.preco) {
+          produtos[cat][index].preco = novoPreco;
+          mudou = true;
+      }
+
+      if (mudou) {
+          carregarCategoria(cat);
+          atualizarTotal();
+          salvarDadosNoLocalStorage();
+      } else if (novoNome !== null && novoNome.trim() === '') {
+        alert("O nome do produto não pode ser vazio.");
+      }
+    } else if (acao === 'excluir') {
+      if (confirm(`Tem certeza que deseja excluir o produto "${p.nome}"?`)) {
+        if (p.quantidade > 0) {
+            p.quantidade = 0;
+            atualizarTotal();
+        }
+        produtos[cat].splice(index, 1);
+        carregarCategoria(cat);
+        salvarDadosNoLocalStorage();
+        alert(`Produto "${p.nome}" excluído com sucesso.`);
+      }
+    }
+  }
+
+  function mostrarHistorico() {
+    const area = document.getElementById("historico-lista");
+    area.innerHTML = "";
+    if (historico.length === 0) {
+        area.innerHTML = "<p>Nenhum pedido no histórico ainda.</p>";
+        return;
+    }
+    historico.forEach(ped => {
+      const div = document.createElement("div");
+      // Removido ped.local da exibição
+      div.innerHTML = `<strong>${ped.nome}</strong> (${ped.numero})<br>${new Date(ped.data).toLocaleString()}<br>Total: R$${ped.total.toFixed(2)}<br><button onclick="window.open('https://wa.me/${ped.numero}?text=${encodeURIComponent(ped.mensagem)}','_blank')">ENVIAR WHATSAPP NOVAMENTE</button><hr>`;
+      area.appendChild(div);
+    });
+  }
+
+  function filtrarHistorico(texto) {
+    const area = document.getElementById("historico-lista");
+    area.innerHTML = "";
+    const textoBusca = texto.toLowerCase();
+    const resultados = historico.filter(p => 
+        p.nome.toLowerCase().includes(textoBusca) || 
+        p.numero.includes(textoBusca)
+        // Removido filtro por local
+    );
+
+    if (resultados.length === 0) {
+        area.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+        return;
+    }
+
+    resultados.forEach(ped => {
+      const div = document.createElement("div");
+      // Removido ped.local da exibição
+      div.innerHTML = `<strong>${ped.nome}</strong> (${ped.numero})<br>${new Date(ped.data).toLocaleString()}<br>Total: R$${ped.total.toFixed(2)}<br><button onclick="window.open('https://wa.me/${ped.numero}?text=${encodeURIComponent(ped.mensagem)}','_blank')">ENVIAR WHATSAPP NOVAMENTE</button><hr>`;
+      area.appendChild(div);
+    });
+  }
+
+  function processarVCF(input) {
+    const arquivo = input.files[0];
+    if (!arquivo) return;
+
+    const leitor = new FileReader();
+    leitor.onload = function (e) {
+      const texto = e.target.result;
+      const linhas = texto.split('\n');
+      let nomeAtual = '';
+      let contatosAdicionados = 0;
+
+      linhas.forEach(linha => {
+        linha = linha.trim();
+
+        if (linha.startsWith('FN:')) { 
+          nomeAtual = linha.replace('FN:', '').trim();
+        } else if (linha.startsWith('TEL')) {
+          const partesTelefone = linha.split(':');
+          let telefone = '';
+          if (partesTelefone.length > 1) {
+              telefone = partesTelefone[partesTelefone.length - 1].replace(/\D/g, ''); 
+          }
+          
+          if (nomeAtual && telefone.length >= 8) {
+            const novoCliente = {
+              nome: nomeAtual,
+              numero: telefone
+              // Removido local
+            };
+
+            if (!clientes.some(c => c.numero === telefone)) {
+              clientes.push(novoCliente);
+              contatosAdicionados++;
+            }
+
+            nomeAtual = ''; 
+          }
+        }
+      });
+
+      filtrarClientesPorInput();
+      document.getElementById('resultadoVCF').innerText = `${contatosAdicionados} contato(s) importado(s) com sucesso!`;
+      input.value = ''; 
+      
+      salvarDadosNoLocalStorage();
+    };
+
+    leitor.readAsText(arquivo);
+  }
+
+  async function importarProdutosPlanilha(event) {
+    const file = event.target.files[0];
+    const messageElement = document.getElementById('importProductsMessage');
+    messageElement.innerText = ''; 
+
+    if (!file) {
+      messageElement.innerText = 'Nenhum arquivo selecionado.';
+      messageElement.style.color = 'red';
+      return;
+    }
+
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }); 
+
+        let produtosAdicionados = 0;
+        let categoriasAdicionadas = 0;
+        let produtosAtualizados = 0;
+
+        for (let i = 1; i < json.length; i++) {
+            const row = json[i];
+            const categoria = String(row[0] || '').trim();
+            const nomeProduto = String(row[1] || '').trim();
+            const preco = parseFloat(String(row[2]).replace(',', '.') || 0); 
+
+            if (!categoria || !nomeProduto || isNaN(preco) || preco <= 0) {
+                console.warn(`Linha ${i + 1} ignorada: Dados inválidos (categoria: "${categoria}", produto: "${nomeProduto}", preço: "${row[2]}")`);
+                continue; 
+            }
+
+            if (!produtos[categoria]) {
+                produtos[categoria] = [];
+                categoriasAdicionadas++;
+            }
+
+            const produtoExistente = produtos[categoria].find(p => p.nome.toLowerCase() === nomeProduto.toLowerCase());
+            if (produtoExistente) {
+                if (produtoExistente.preco !== preco) {
+                    produtoExistente.preco = preco;
+                    produtosAtualizados++;
+                }
+                // Garante que a quantidade seja 0 ao atualizar
+                produtoExistente.quantidade = 0; 
+            } else {
+                // Garante que a quantidade seja 0 ao adicionar novo produto
+                produtos[categoria].push({ nome: nomeProduto, preco: preco, quantidade: 0 });
+                produtosAdicionados++;
+            }
+        }
+        
+        salvarDadosNoLocalStorage();
+        carregarCategorias(); 
+        if (categoriaAtiva) { 
+            carregarCategoria(categoriaAtiva);
+        }
+        preencherSelectCategoria(); 
+
+        messageElement.innerText = `Importação concluída: ${produtosAdicionados} produtos novos adicionados, ${produtosAtualizados} produtos atualizados, ${categoriasAdicionadas} categorias novas criadas.`;
+        messageElement.style.color = 'green';
+
+    } catch (error) {
+        messageElement.innerText = `Erro ao processar a planilha: ${error.message}. Verifique o formato do arquivo e das colunas.`;
+        messageElement.style.color = 'red';
+        console.error("Erro na importação da planilha:", error);
+    } finally {
+        event.target.value = ''; 
+    }
+  }
+
+  // --- Funções de E-mail Automático (NOVAS) ---
+
+  function carregarConfiguracoesEmail() {
+      if (!currentUser) return;
+      document.getElementById('emailAutomaticoInput').value = emailAutomaticoConfig.email;
+      document.getElementById('frequenciaEnvio').value = emailAutomaticoConfig.frequencia;
+  }
+
+  function salvarEmailAutomatico() {
+      const email = document.getElementById('emailAutomaticoInput').value.trim();
+      const messageElement = document.getElementById('emailAutomaticoMessage');
+
+      if (!email || !email.includes('@') || !email.includes('.')) {
+          messageElement.innerText = "Por favor, digite um endereço de e-mail válido.";
+          messageElement.style.color = 'red';
+          messageElement.style.display = 'block';
+          return;
+      }
+
+      emailAutomaticoConfig.email = email;
+      salvarDadosNoLocalStorage();
+      messageElement.innerText = "E-mail salvo com sucesso!";
+      messageElement.style.color = 'green';
+      messageElement.style.display = 'block';
+      setTimeout(() => messageElement.style.display = 'none', 3000);
+      
+      // Se o e-mail foi salvo pela primeira vez ou mudou, redefinir lastSent para forçar o próximo envio
+      if (!emailAutomaticoConfig.lastSent) {
+          emailAutomaticoConfig.lastSent = null; 
+          salvarDadosNoLocalStorage();
+      }
+  }
+
+  function salvarFrequenciaEnvio() {
+      const frequencia = document.getElementById('frequenciaEnvio').value;
+      const messageElement = document.getElementById('frequenciaEnvioMessage');
+
+      emailAutomaticoConfig.frequencia = frequencia;
+      salvarDadosNoLocalStorage();
+      messageElement.innerText = "Frequência de envio salva com sucesso!";
+      messageElement.style.color = 'green';
+      messageElement.style.display = 'block';
+      setTimeout(() => messageElement.style.display = 'none', 3000);
+  }
+
+  function gerarHistoricoParaEmail(isAutomatic = false) {
+    if (historico.length === 0) {
+      return "Nenhum pedido registrado no histórico.";
+    }
+
+    let textoHistorico = `Histórico de Pedidos - Vendedor: ${currentUser}\n\n`;
+    historico.forEach((ped, index) => {
+      textoHistorico += `--- Pedido #${historico.length - index} ---\n`; 
+      textoHistorico += `Cliente: ${ped.nome}\n`;
+      textoHistorico += `Telefone: ${ped.numero}\n`;
+      // Removido ped.local da geração do histórico para e-mail
+      textoHistorico += `Data: ${new Date(ped.data).toLocaleString()}\n`;
+      textoHistorico += `Total: R$${ped.total.toFixed(2).replace('.', ',')}\n`;
+      if (isAutomatic) { // Inclui a mensagem completa apenas para envios automáticos para referência
+        textoHistorico += `Mensagem enviada (completa): \n"${ped.mensagem}"\n\n`;
+      } else { // Para download manual, apenas uma parte da mensagem
+        textoHistorico += `Mensagem enviada (resumo): \n"${ped.mensagem.substring(0, 100)}..."\n\n`;
+      }
+    });
+    return textoHistorico;
+  }
+
+  function enviarHistoricoEmail(isAutomatic = false) {
+    const email = emailAutomaticoConfig.email;
+    if (!email || !email.includes('@') || !email.includes('.')) {
+      if (!isAutomatic) { // Apenas alerta se for envio manual e o e-mail não estiver configurado
+        alert("Por favor, configure um e-mail válido nas Configurações antes de enviar o histórico.");
+      }
+      return;
+    }
+
+    const historicoTexto = gerarHistoricoParaEmail(isAutomatic);
+    const dataAtual = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+    const nomeArquivo = `Historico_Pedidos_${currentUser}_${dataAtual}.txt`;
+    
+    // Simula o download do arquivo. Em um ambiente real, este arquivo seria enviado por um servidor de e-mail.
+    const blob = new Blob([historicoTexto], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nomeArquivo;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    if (isAutomatic) {
+        emailAutomaticoConfig.lastSent = new Date();
+        salvarDadosNoLocalStorage();
+        console.log(`[Email Automático] Histórico enviado para ${email} em ${new Date().toLocaleString()}`);
+    } else {
+        alert(`Arquivo "${nomeArquivo}" gerado com sucesso! Salve-o e anexe-o ao seu aplicativo de e-mail para enviar para ${email}.`);
+    }
+  }
+
+  function enviarHistoricoEmailManual() {
+      enviarHistoricoEmail(false); // Chama a função de envio para o modo manual
+  }
+
+  function verificarEEnviarEmailAutomtico() {
+    if (!currentUser || !emailAutomaticoConfig.email || emailAutomaticoConfig.frequencia === 'manual') {
+        return; // Não envia se não houver usuário, e-mail configurado ou se a frequência for manual
+    }
+
+    const now = new Date();
+    const lastSent = emailAutomaticoConfig.lastSent ? new Date(emailAutomaticoConfig.lastSent) : null;
+    let shouldSend = false;
+
+    if (!lastSent) {
+        shouldSend = true; // Envia se nunca foi enviado
+    } else {
+        const timeDiff = now.getTime() - lastSent.getTime(); // Diferença em milissegundos
+        const oneDay = 24 * 60 * 60 * 1000;
+        const oneWeek = 7 * oneDay;
+        const oneMonth = 30 * oneDay; // Aproximação
+        const oneYear = 365 * oneDay; // Aproximação
+
+        switch (emailAutomaticoConfig.frequencia) {
+            case 'daily':
+                shouldSend = timeDiff >= oneDay;
+                break;
+            case 'weekly':
+                shouldSend = timeDiff >= oneWeek;
+                break;
+            case 'monthly':
+                // Verifica se passou um mês civil
+                if (now.getMonth() !== lastSent.getMonth() || now.getFullYear() !== lastSent.getFullYear()) {
+                    shouldSend = true;
+                }
+                break;
+            case 'yearly':
+                // Verifica se passou um ano civil
+                if (now.getFullYear() !== lastSent.getFullYear()) {
+                    shouldSend = true;
+                }
+                break;
+        }
+    }
+
+    if (shouldSend) {
+        console.log(`Iniciando envio automático de e-mail (${emailAutomaticoConfig.frequencia})...`);
+        enviarHistoricoEmail(true); // Chama a função de envio para o modo automático
+    }
+  }
+
+  // --- Inicialização ---
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadUserCredentials(); 
+    document.getElementById('login-container').style.display = 'flex';
+    document.getElementById('app-content').style.display = 'none';
+    document.getElementById('app-header').style.display = 'none';
+  });
+</script>
+</body>
+</html>
